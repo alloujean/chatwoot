@@ -32,8 +32,8 @@ services:
       - WEB_CONCURRENCY=1
       - RAILS_LOG_TO_STDOUT=true
       
-    # Le serveur écoute sur le port 3002
-    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3002 -b 0.0.0.0"
+    # ✅ CORRECTION DU PORT: Retour au port 3000 pour la synchronisation avec Dokploy/Traefik
+    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
     
@@ -45,8 +45,8 @@ services:
       # L'application Rails utilisera la variable codée en dur ci-dessus pour ses liens internes.
       - "traefik.http.routers.${PROJECT_NAME}-rails.rule=Host(`${FRONTEND_URL}`)" 
       - "traefik.http.routers.${PROJECT_NAME}-rails.entrypoints=web,websecure"
-      # Le port cible est 3002
-      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3002"
+      # ✅ CORRECTION DU PORT: Le port cible est 3000
+      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3000"
       - "traefik.docker.network=${DOKPLOY_NETWORK}"
       # Timeout pour éviter les Bad Gateway au démarrage
       - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.timeout=120s"
