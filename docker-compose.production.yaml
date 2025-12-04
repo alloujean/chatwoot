@@ -27,12 +27,13 @@ services:
       - POSTGRES_USER=chatwoot_prod # ✅ CORRECTION: Utilisateur explicite pour la connexion
       - REDIS_URL=redis://redis:6379/1
       
-      # 💥 CORRECTION 504: Assurer que Rails sert les fichiers statiques et réduire la concurrence
+      # 💥 CORRECTION 504/404: Assurer que Rails sert les fichiers statiques et réduction de la concurrence
       - RAILS_SERVE_STATIC_FILES=true
       - WEB_CONCURRENCY=1 # Réduit la charge et les risques de Timeout au démarrage
+      - RAILS_LOG_TO_STDOUT=true # Assure que tous les logs Rails (y compris les 404) vont à la console
       
-    # 🚨 L'Entrypoint assure l'initialisation de la DB puis le lancement du serveur sur le port interne 3000
-    entrypoint: sh -c "bundle exec rails db:chatwoot_prepare && bundle exec rails s -p 3000 -b 0.0.0.0"
+    # 🚨 CORRECTION CRITIQUE DB: Utiliser db:migrate pour forcer la création des tables manquantes
+    entrypoint: sh -c "bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
     
