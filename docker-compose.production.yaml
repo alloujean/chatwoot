@@ -47,6 +47,8 @@ services:
       - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3000"
       # Le réseau Docker externe pour le routage
       - "traefik.docker.network=${DOKPLOY_NETWORK}"
+      # ⏳ AJOUT DU TIMEOUT : Donner 120s à Chatwoot pour répondre
+      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.timeout=120s"
     
     networks:
       - default
