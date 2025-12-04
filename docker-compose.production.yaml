@@ -32,8 +32,9 @@ services:
       - WEB_CONCURRENCY=1 # Réduit la charge et les risques de Timeout au démarrage
       - RAILS_LOG_TO_STDOUT=true # Assure que tous les logs Rails (y compris les 404) vont à la console
       
-    # 🚨 MISE À JOUR FINALE DE L'ENTRYPOINT: Ajout de assets:precompile pour corriger le 404/Écran blanc du frontend
-    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails assets:precompile && bundle exec rails s -p 3000 -b 0.0.0.0"
+    # 🚨 CORRECTION FINALE DE L'ENTRYPOINT: Retrait de assets:precompile qui échoue (pnpm manquant).
+    # On garde l'attente de Postgres et db:migrate.
+    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
     
