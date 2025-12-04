@@ -11,9 +11,9 @@ services:
     depends_on:
       - postgres
       - redis
-    # 🚨 AJOUT DE LA CORRECTION DNS: Assurer que 'postgres' est dans /etc/hosts du conteneur
-    extra_hosts:
-      - "postgres:127.0.0.1" # Ceci est un contournement temporaire
+    # ❌ RETRAIT DE LA CORRECTION DNS: extra_hosts n'est plus nécessaire car 'postgres' est maintenant résolu
+    # extra_hosts:
+    #   - "postgres:127.0.0.1" 
 
     environment:
       # --- VARIABLES CRITIQUES - CONSERVE LE FORMAT ENV POUR LE DOMAINE TRAEFIK ---
@@ -92,10 +92,8 @@ services:
     # ✅ CORRECTION DU RÉSEAU: Retour au réseau 'default'
     networks:
       - default
-      # 🚨 AJOUT DE LA CORRECTION DNS: Aliases pour le service Postgres
+      # ❌ RETRAIT DU COMMENTAIRE ALIAS DNS : Inutile et encombrant
       # L'alias 'postgres' permet de confirmer que le nom du service est bien résolu dans le réseau interne.
-      # Remarque: nous avons rétiré le 'aliases' de la réponse précédente car il peut être contre-productif dans Dokploy.
-      # Je compte sur 'default' et 'extra_hosts' pour la correction.
 
   redis:
     image: redis:alpine
