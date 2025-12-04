@@ -32,9 +32,8 @@ services:
       - WEB_CONCURRENCY=1 # Réduit la charge et les risques de Timeout au démarrage
       - RAILS_LOG_TO_STDOUT=true # Assure que tous les logs Rails (y compris les 404) vont à la console
       
-    # 🚨 CORRECTION FINALE DE L'ENTRYPOINT: Retrait de assets:precompile qui échoue (pnpm manquant).
-    # On garde l'attente de Postgres et db:migrate.
-    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
+    # 🚨 MISE À JOUR DU PORT: Le serveur écoute maintenant sur le port 3002
+    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3002 -b 0.0.0.0"
     command: []
     restart: always
     
@@ -45,8 +44,8 @@ services:
       - "traefik.http.routers.${PROJECT_NAME}-rails.rule=Host(`${FRONTEND_URL}`)"
       # Définition des points d'entrée pour HTTP et HTTPS
       - "traefik.http.routers.${PROJECT_NAME}-rails.entrypoints=web,websecure"
-      # Utilise le port interne 3000 du conteneur
-      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3000"
+      # Utilise le port interne 3002 du conteneur (MIS À JOUR)
+      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3002"
       # Le réseau Docker externe pour le routage
       - "traefik.docker.network=${DOKPLOY_NETWORK}"
       # ⏳ AJOUT DU TIMEOUT : Donner 120s à Chatwoot pour répondre
