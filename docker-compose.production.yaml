@@ -24,35 +24,33 @@ services:
       - INSTALLATION_ENV=docker
       - POSTGRES_HOST=postgres
       - POSTGRES_DATABASE=chatwoot
-      - POSTGRES_USER=chatwoot_prod # ✅ CORRECTION: Utilisateur explicite pour la connexion
+      - POSTGRES_USER=chatwoot_prod
       - REDIS_URL=redis://redis:6379/1
       
       # 💥 CORRECTION 504/404: Assurer que Rails sert les fichiers statiques et réduction de la concurrence
       - RAILS_SERVE_STATIC_FILES=true
-      - WEB_CONCURRENCY=1 # Réduit la charge et les risques de Timeout au démarrage
-      - RAILS_LOG_TO_STDOUT=true # Assure que tous les logs Rails (y compris les 404) vont à la console
+      - WEB_CONCURRENCY=1
+      - RAILS_LOG_TO_STDOUT=true
       
-    # 🚨 MISE À JOUR DU PORT: Le serveur écoute maintenant sur le port 3002
+    # Le serveur écoute sur le port 3002
     entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3002 -b 0.0.0.0"
     command: []
     restart: always
     
-    # ➕ MISE À JOUR CRITIQUE: Configuration Traefik la plus robuste
+    # Configuration Traefik
     labels:
       - "traefik.enable=true"
-      # Le routeur Traefik doit utiliser le bon hôte
       - "traefik.http.routers.${PROJECT_NAME}-rails.rule=Host(`${FRONTEND_URL}`)"
-      # Définition des points d'entrée pour HTTP et HTTPS
       - "traefik.http.routers.${PROJECT_NAME}-rails.entrypoints=web,websecure"
-      # Utilise le port interne 3002 du conteneur (MIS À JOUR)
+      # Le port cible est 3002
       - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3002"
-      # Le réseau Docker externe pour le routage
       - "traefik.docker.network=${DOKPLOY_NETWORK}"
-      # ⏳ AJOUT DU TIMEOUT : Donner 120s à Chatwoot pour répondre
+      # Timeout pour éviter les Bad Gateway au démarrage
       - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.timeout=120s"
     
+    # ✅ MISE À JOUR: Utilisation du nouveau réseau interne explicite
     networks:
-      - default
+      - chatwoot-internal 
       - dokploy-network
 
   sidekiq:
@@ -65,7 +63,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DATABASE=chatwoot
-      - POSTGRES_USER=chatwoot_prod # ✅ CORRECTION: Utilisateur explicite pour la connexion
+      - POSTGRES_USER=chatwoot_prod
       - REDIS_URL=redis://redis:6379/1
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
@@ -73,8 +71,9 @@ services:
       - INSTALLATION_ENV=docker
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     restart: always
+    # ✅ MISE À JOUR: Utilisation du nouveau réseau interne explicite
     networks:
-      - default
+      - chatwoot-internal
 
   postgres:
     image: pgvector/pgvector:pg16
@@ -83,10 +82,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=chatwoot
-      - POSTGRES_USER=chatwoot_prod # CRÉATION DE L'UTILISATEUR PAR DEFAUT DE CHATWOOT
+      - POSTGRES_USER=chatwoot_prod
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    # ✅ MISE À JOUR: Utilisation du nouveau réseau interne explicite
     networks:
-      - default
+      - chatwoot-internal
 
   redis:
     image: redis:alpine
@@ -94,8 +94,9 @@ services:
     command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
     volumes:
       - redis_data:/data
+    # ✅ MISE À JOUR: Utilisation du nouveau réseau interne explicite
     networks:
-      - default
+      - chatwoot-internal
     
 
 volumes:
@@ -105,7 +106,9 @@ volumes:
 
 # Définition des réseaux
 networks:
-  default:
-    name: chatwoot_default
+  # ✅ NOUVEAU RÉSEAU INTERNE CRÉÉ LOCALEMENT
+  chatwoot-internal:
+    driver: bridge
+  # L'ancien réseau externe Traefik
   dokploy-network:
     external: true
