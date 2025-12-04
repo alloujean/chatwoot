@@ -27,21 +27,25 @@ services:
       - POSTGRES_USER=chatwoot_prod # ✅ CORRECTION: Utilisateur explicite pour la connexion
       - REDIS_URL=redis://redis:6379/1
       
+      # 💥 CORRECTION 504: Assurer que Rails sert les fichiers statiques et réduire la concurrence
+      - RAILS_SERVE_STATIC_FILES=true
+      - WEB_CONCURRENCY=1 # Réduit la charge et les risques de Timeout au démarrage
+      
     # 🚨 L'Entrypoint assure l'initialisation de la DB puis le lancement du serveur sur le port interne 3000
     entrypoint: sh -c "bundle exec rails db:chatwoot_prepare && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
     
-    # ➕ AJOUT CRITIQUE: Labels Traefik/Dokploy pour forcer le routage vers le port 3000
+    # ➕ MISE À JOUR CRITIQUE: Configuration Traefik la plus robuste
     labels:
-      # Active le reverse proxy Traefik pour ce service
       - "traefik.enable=true"
-      # Définit le port interne du conteneur à utiliser (3000)
-      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3000"
-      # Définit le routeur pour utiliser le domaine Dokploy
+      # Le routeur Traefik doit utiliser le bon hôte
       - "traefik.http.routers.${PROJECT_NAME}-rails.rule=Host(`${FRONTEND_URL}`)"
-      # Définit le réseau externe pour le routage Dokploy
-      - "traefik.http.routers.${PROJECT_NAME}-rails.entrypoints=websecure"
+      # Définition des points d'entrée pour HTTP et HTTPS
+      - "traefik.http.routers.${PROJECT_NAME}-rails.entrypoints=web,websecure"
+      # Utilise le port interne 3000 du conteneur
+      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3000"
+      # Le réseau Docker externe pour le routage
       - "traefik.docker.network=${DOKPLOY_NETWORK}"
     
     networks:
