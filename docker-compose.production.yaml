@@ -18,13 +18,13 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       
-      # --- VARIABLES INTERNES ET STATIQUES (Correction: Ajout de POSTGRES_USER) ---
+      # --- VARIABLES INTERNES ET STATIQUES ---
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
       - POSTGRES_HOST=postgres
       - POSTGRES_DATABASE=chatwoot
-      - POSTGRES_USER=postgres # ✅ CORRECTION AJOUTÉE ICI
+      - POSTGRES_USER=chatwoot_prod # ✅ CORRECTION: Utilisateur explicite pour la connexion
       - REDIS_URL=redis://redis:6379/1
       
     entrypoint: docker/entrypoints/rails.sh
@@ -45,7 +45,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DATABASE=chatwoot
-      - POSTGRES_USER=postgres # ✅ CORRECTION AJOUTÉE ICI
+      - POSTGRES_USER=chatwoot_prod # ✅ CORRECTION: Utilisateur explicite pour la connexion
       - REDIS_URL=redis://redis:6379/1
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
@@ -63,7 +63,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=chatwoot
-      - POSTGRES_USER=postgres
+      - POSTGRES_USER=chatwoot_prod # CRÉATION DE L'UTILISATEUR PAR DEFAUT DE CHATWOOT
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - default
