@@ -16,10 +16,10 @@ services:
     # ❌ La section ports: est retirée pour éviter le conflit sur le port 3000
     environment:
       # --- VARIABLES CRITIQUES À DÉFINIR DANS L'INTERFACE DOKPLOY ---
-      - FRONTEND_URL=${FRONTEND_URL}        # Exemple: https://chatwoot.votre-domaine.com
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE}  # Chaîne aléatoire longue et sécurisée (>= 64 caractères)
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - FRONTEND_URL=${FRONTEND_URL}        # EXEMPLE: https://imobiznets-messagerie-cqcun4-ef995c-136-112-175-192.traefik.me
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}  # EXEMPLE: 4f36a5b927c1f8d0e7b2a6f5c8d4e1b0a9c8b7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD} # EXEMPLE: DbChatwootSecure123!
+      - REDIS_PASSWORD=${REDIS_PASSWORD}    # EXEMPLE: CacheChatwootSecure456!
       
       # --- VARIABLES INTERNES ET STATIQUES ---
       - NODE_ENV=production
