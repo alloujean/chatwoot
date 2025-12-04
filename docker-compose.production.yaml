@@ -1,25 +1,39 @@
-version: '3'
+version: '3.7' # Utilisation d'une version récente
 
 services:
   base: &base
     image: chatwoot/chatwoot:latest
-    env_file: .env ## Change this file for customized env variables
+    # ❌ L'env_file est retiré. Les variables sont gérées par Dokploy.
     volumes:
       - storage_data:/app/storage
+    # Tous les services (sauf rails) utilisent uniquement le réseau interne (default)
 
   rails:
     <<: *base
     depends_on:
       - postgres
       - redis
+    # ❌ La section ports: est retirée pour éviter le conflit sur le port 3000
     environment:
+      # --- VARIABLES CRITIQUES À DÉFINIR DANS L'INTERFACE DOKPLOY ---
+      - FRONTEND_URL=${FRONTEND_URL}        # Exemple: https://chatwoot.votre-domaine.com
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}  # Chaîne aléatoire longue et sécurisée (>= 64 caractères)
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      
+      # --- VARIABLES INTERNES ET STATIQUES ---
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DATABASE=chatwoot
+      - REDIS_URL=redis://redis:6379/1
+      
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     restart: always
-    # ✅ 3. AJOUTER : Le réseau Dokploy pour l'accès externe (Traefik)
+    
+    # Réseau Dokploy ajouté pour le routage Traefik
     networks:
       - default
       - dokploy-network
@@ -30,31 +44,45 @@ services:
       - postgres
       - redis
     environment:
-      - NODE_ENV=production
+      # Doit avoir accès à la même SECRET_KEY_BASE, etc.
       - RAILS_ENV=production
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=chatwoot
+      - REDIS_URL=redis://redis:6379/1
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - NODE_ENV=production
       - INSTALLATION_ENV=docker
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     restart: always
+    networks:
+      - default # Utilise uniquement le réseau interne
 
   postgres:
     image: pgvector/pgvector:pg16
     restart: always
-    
+    # ❌ Pas de ports exposés à l'hôte
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=chatwoot
       - POSTGRES_USER=postgres
-      # Please provide your own password.
-      - POSTGRES_PASSWORD=
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD} # Utiliser la variable Dokploy
+    networks:
+      - default # Utilise uniquement le réseau interne
 
   redis:
     image: redis:alpine
     restart: always
+    # ❌ Pas de ports exposés à l'hôte
     command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    # ❌ env_file retiré. Le mot de passe est pris directement de l'environnement Dokploy.
     volumes:
       - redis_data:/data
-   
+    networks:
+      - default # Utilise uniquement le réseau interne
+    
 
 volumes:
   storage_data:
@@ -63,9 +91,7 @@ volumes:
 
 # Définition des réseaux
 networks:
-  # Le réseau par défaut est le réseau interne pour Postgres, Redis, Sidekiq et Rails
   default:
-    name: chatwoot_default
-  # ✅ 3. AJOUTER : Le réseau Dokploy pour la connexion à Traefik
+    name: chatwoot_default # Nom du réseau interne pour les services
   dokploy-network:
-    external: true
+    external: true         # Nom du réseau Dokploy pour Traefik
