@@ -11,9 +11,13 @@ services:
     depends_on:
       - postgres
       - redis
+    # 🚨 AJOUT DE LA CORRECTION DNS: Assurer que 'postgres' est dans /etc/hosts du conteneur
+    extra_hosts:
+      - "postgres:127.0.0.1" # Ceci est un contournement temporaire
+
     environment:
-      # --- VARIABLES CRITIQUES - MISES EN DUR (HARDCODED) ---
-      - FRONTEND_URL=http://messagerie-messanger-8i3eqr-22a78a-136-112-175-192.traefik.me
+      # --- VARIABLES CRITIQUES - CONSERVE LE FORMAT ENV POUR LE DOMAINE TRAEFIK ---
+      - FRONTEND_URL=messagerie-messanger-8i3eqr-22a78a-136-112-175-192.traefik.me # Retrait de http://
       - SECRET_KEY_BASE=4f36a5b927c1f8d0e7b2a6f5c8d4e1b0a9c8b7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4
       - POSTGRES_PASSWORD=FEfUg4pC66d6
       - REDIS_PASSWORD=G44RTvqBxx57
@@ -88,6 +92,10 @@ services:
     # ✅ CORRECTION DU RÉSEAU: Retour au réseau 'default'
     networks:
       - default
+      # 🚨 AJOUT DE LA CORRECTION DNS: Aliases pour le service Postgres
+      # L'alias 'postgres' permet de confirmer que le nom du service est bien résolu dans le réseau interne.
+      # Remarque: nous avons rétiré le 'aliases' de la réponse précédente car il peut être contre-productif dans Dokploy.
+      # Je compte sur 'default' et 'extra_hosts' pour la correction.
 
   redis:
     image: redis:alpine
