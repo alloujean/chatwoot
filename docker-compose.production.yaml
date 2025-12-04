@@ -32,7 +32,17 @@ services:
     command: []
     restart: always
     
-    # 🗑️ RETRAIT DE LA SECTION PORTS: Dokploy gère l'exposition via le Reverse Proxy.
+    # ➕ AJOUT CRITIQUE: Labels Traefik/Dokploy pour forcer le routage vers le port 3000
+    labels:
+      # Active le reverse proxy Traefik pour ce service
+      - "traefik.enable=true"
+      # Définit le port interne du conteneur à utiliser (3000)
+      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3000"
+      # Définit le routeur pour utiliser le domaine Dokploy
+      - "traefik.http.routers.${PROJECT_NAME}-rails.rule=Host(`${FRONTEND_URL}`)"
+      # Définit le réseau externe pour le routage Dokploy
+      - "traefik.http.routers.${PROJECT_NAME}-rails.entrypoints=websecure"
+      - "traefik.docker.network=${DOKPLOY_NETWORK}"
     
     networks:
       - default
