@@ -33,7 +33,9 @@ services:
       - RAILS_LOG_TO_STDOUT=true # Assure que tous les logs Rails (y compris les 404) vont à la console
       
     # 🚨 CORRECTION CRITIQUE DB: Utiliser db:migrate pour forcer la création des tables manquantes
-    entrypoint: sh -c "bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
+    # 🛡️ AJOUT CRITIQUE DE L'ATTENTE (WAIT-FOR-IT) : Assurer que Postgres est prêt avant db:migrate
+    # La commande 'nc' (netcat) est souvent disponible dans les images basées sur Debian/Alpine.
+    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
     
