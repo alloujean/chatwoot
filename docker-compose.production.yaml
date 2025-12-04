@@ -11,9 +11,6 @@ services:
     depends_on:
       - postgres
       - redis
-    # ❌ RETRAIT DE LA CORRECTION DNS: extra_hosts n'est plus nécessaire car 'postgres' est maintenant résolu
-    # extra_hosts:
-    #   - "postgres:127.0.0.1" 
 
     environment:
       # --- VARIABLES CRITIQUES - CONSERVE LE FORMAT ENV POUR LE DOMAINE TRAEFIK ---
@@ -36,8 +33,8 @@ services:
       - WEB_CONCURRENCY=1
       - RAILS_LOG_TO_STDOUT=true
       
-    # ✅ CORRECTION DU PORT: Retour au port 3000 pour la synchronisation avec Dokploy/Traefik
-    entrypoint: sh -c "until nc -z postgres 5432; do echo 'Waiting for Postgres on 5432...'; sleep 1; done && bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
+    # ✅ SIMPLIFICATION: La boucle d'attente est retirée car la connexion est maintenant fonctionnelle
+    entrypoint: sh -c "bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
     
@@ -92,8 +89,6 @@ services:
     # ✅ CORRECTION DU RÉSEAU: Retour au réseau 'default'
     networks:
       - default
-      # ❌ RETRAIT DU COMMENTAIRE ALIAS DNS : Inutile et encombrant
-      # L'alias 'postgres' permet de confirmer que le nom du service est bien résolu dans le réseau interne.
 
   redis:
     image: redis:alpine
