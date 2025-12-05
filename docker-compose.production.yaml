@@ -6,22 +6,14 @@ services:
     volumes:
       - storage_data:/app/storage
 
-  # ------------------------
-  # Rails API
-  # ------------------------
   rails:
     <<: *base
     depends_on:
       - postgres
       - redis
-
+    env_file:
+      - .env
     environment:
-      # Variables critiques depuis .env
-      - FRONTEND_URL=${FRONTEND_URL}
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-
       # Variables internes
       - NODE_ENV=production
       - RAILS_ENV=production
@@ -30,16 +22,12 @@ services:
       - POSTGRES_DATABASE=chatwoot
       - POSTGRES_USER=chatwoot_prod
       - REDIS_URL=redis://redis:6379/1
-
-      # Fix erreurs 502/504
       - RAILS_SERVE_STATIC_FILES=true
-      - WEB_CONCURRENCY=0
+      - WEB_CONCURRENCY=1
       - RAILS_LOG_TO_STDOUT=true
-
-    entrypoint: sh -c "bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
+    entrypoint: sh -c "export SECRET_KEY_BASE=${SECRET_KEY_BASE} && bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
-
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.chatwoot-rails.rule=Host(`messagerie-messanger-8i3eqr-22a78a-136-112-175-192.traefik.me`)"
@@ -47,50 +35,18 @@ services:
       - "traefik.http.services.chatwoot-rails.loadbalancer.server.port=3000"
       - "traefik.http.services.chatwoot-rails.loadbalancer.server.timeout=120s"
       - "traefik.docker.network=dokploy-network"
-
     networks:
       - default
       - dokploy-network
 
-  # ------------------------
-  # Frontend Web (Chatwoot)
-  # ------------------------
-  web:
-    <<: *base
-    depends_on:
-      - rails
-    environment:
-      - NODE_ENV=production
-      - RAILS_ENV=production
-      - INSTALLATION_ENV=docker
-      - FRONTEND_URL=${FRONTEND_URL}
-
-    command: sh -c "bundle exec rake assets:precompile && bundle exec rails s -p 3000 -b 0.0.0.0"
-    restart: always
-
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.chatwoot-web.rule=Host(`messagerie-messanger-8i3eqr-22a78a-136-112-175-192.traefik.me`)"
-      - "traefik.http.routers.chatwoot-web.entrypoints=web,websecure"
-      - "traefik.http.services.chatwoot-web.loadbalancer.server.port=3000"
-      - "traefik.docker.network=dokploy-network"
-
-    networks:
-      - default
-      - dokploy-network
-
-  # ------------------------
-  # Sidekiq
-  # ------------------------
   sidekiq:
     <<: *base
     depends_on:
       - postgres
       - redis
+    env_file:
+      - .env
     environment:
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - RAILS_ENV=production
       - POSTGRES_HOST=postgres
       - POSTGRES_DATABASE=chatwoot
@@ -103,9 +59,6 @@ services:
     networks:
       - default
 
-  # ------------------------
-  # PostgreSQL
-  # ------------------------
   postgres:
     image: pgvector/pgvector:pg16
     restart: always
@@ -118,31 +71,25 @@ services:
     networks:
       - default
 
-  # ------------------------
-  # Redis
-  # ------------------------
   redis:
     image: redis:alpine
     restart: always
+    env_file:
+      - .env
     command: ["sh", "-c", "redis-server --requirepass \"${REDIS_PASSWORD}\""]
     volumes:
       - redis_data:/data
     networks:
       - default
 
-# ------------------------
-# Volumes
-# ------------------------
 volumes:
   storage_data:
   postgres_data:
   redis_data:
 
-# ------------------------
-# Réseaux
-# ------------------------
 networks:
   default:
     name: chatwoot_default
   dokploy-network:
     external: true
+    
