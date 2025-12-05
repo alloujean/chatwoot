@@ -1,50 +1,69 @@
+version: '3.9'
+
+networks:
+  dokploy-network:
+    external: true
+
 services:
-  rails:
+  web:
     image: chatwoot/chatwoot:latest
+    restart: always
     env_file: .env
+    environment:
+      - RAILS_ENV=production
+      - NODE_ENV=production
+      - FRONTEND_URL=${FRONTEND_URL}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     depends_on:
       - postgres
       - redis
-    volumes:
-      - ./storage:/app/storage
-    command: bundle exec rails s -p 3000 -b 0.0.0.0
+    networks:
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${PROJECT_NAME}.rule=Host(`${FRONTEND_URL}`)
+      - traefik.http.routers.${PROJECT_NAME}.entrypoints=websecure
+      - traefik.http.routers.${PROJECT_NAME}.tls.certresolver=letsencrypt
+      - traefik.http.services.${PROJECT_NAME}.loadbalancer.server.port=3000
 
   sidekiq:
     image: chatwoot/chatwoot:latest
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    restart: always
     env_file: .env
+    environment:
+      - RAILS_ENV=production
+      - NODE_ENV=production
     depends_on:
       - postgres
       - redis
-    volumes:
-      - ./storage:/app/storage
-    command: bundle exec sidekiq
-
-  web:
-    image: nginx:1.25
-    depends_on:
-      - rails
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - dokploy-network
 
   postgres:
-    image: postgres:14
+    image: postgres:16-alpine
     restart: always
     environment:
       POSTGRES_DB: chatwoot
-      POSTGRES_USER: chatwoot
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - dokploy-network
 
   redis:
-    image: redis:7
+    image: redis:alpine
     restart: always
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    env_file: .env
     volumes:
-      - ./redis:/data
+      - redis:/data
+    networks:
+      - dokploy-network
 
 volumes:
-  pgdata:
+  postgres:
   redis:
