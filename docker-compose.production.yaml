@@ -5,7 +5,7 @@ services:
     image: chatwoot/chatwoot:latest
     volumes:
       - storage_data:/app/storage
-    
+
   rails:
     <<: *base
     depends_on:
@@ -13,13 +13,13 @@ services:
       - redis
 
     environment:
-      # --- VARIABLES CRITIQUES - CONSERVE LE FORMAT ENV POUR LE DOMAINE TRAEFIK ---
-      - FRONTEND_URL=messagerie-messanger-8i3eqr-22a78a-136-112-175-192.traefik.me # Retrait de http://
-      - SECRET_KEY_BASE=4f36a5b927c1f8d0e7b2a6f5c8d4e1b0a9c8b7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4
-      - POSTGRES_PASSWORD=FEfUg4pC66d6
-      - REDIS_PASSWORD=G44RTvqBxx57
-      
-      # --- VARIABLES INTERNES ET STATIQUES ---
+      # --- VARIABLES CRITIQUES (depuis .env Dokploy) ---
+      - FRONTEND_URL=${FRONTEND_URL}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
+      # --- VARIABLES INTERNES ---
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
@@ -27,29 +27,27 @@ services:
       - POSTGRES_DATABASE=chatwoot
       - POSTGRES_USER=chatwoot_prod
       - REDIS_URL=redis://redis:6379/1
-      
-      # 💥 CORRECTION 504/404: Assurer que Rails sert les fichiers statiques et réduction de la concurrence
+
+      # Fix erreurs 502/504
       - RAILS_SERVE_STATIC_FILES=true
       - WEB_CONCURRENCY=1
       - RAILS_LOG_TO_STDOUT=true
-      
-    # ✅ SIMPLIFICATION: La boucle d'attente est retirée car la connexion est maintenant fonctionnelle
+
     entrypoint: sh -c "bundle exec rails db:migrate && bundle exec rails s -p 3000 -b 0.0.0.0"
     command: []
     restart: always
-    
-    # Configuration Traefik 
+
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${PROJECT_NAME}-rails.rule=Host(`${FRONTEND_URL}`)" 
-      - "traefik.http.routers.${PROJECT_NAME}-rails.entrypoints=web,websecure"
-      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.port=3000"
-      - "traefik.docker.network=${DOKPLOY_NETWORK}"
-      - "traefik.http.services.${PROJECT_NAME}-rails.loadbalancer.server.timeout=120s"
-    
-    # ✅ CORRECTION DU RÉSEAU: Retour au réseau 'default' (qui gère la découverte interne)
+      # ATTENTION : Traefik ne supporte pas ${FRONTEND_URL} → domaine mis en dur
+      - "traefik.http.routers.chatwoot-rails.rule=Host(`messagerie-messanger-8i3eqr-22a78a-136-112-175-192.traefik.me`)"
+      - "traefik.http.routers.chatwoot-rails.entrypoints=web,websecure"
+      - "traefik.http.services.chatwoot-rails.loadbalancer.server.port=3000"
+      - "traefik.http.services.chatwoot-rails.loadbalancer.server.timeout=120s"
+      - "traefik.docker.network=dokploy-network"
+
     networks:
-      - default 
+      - default
       - dokploy-network
 
   sidekiq:
@@ -57,61 +55,63 @@ services:
     depends_on:
       - postgres
       - redis
+
     environment:
+      # Variables critiques
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
+      # Variables internes
       - RAILS_ENV=production
       - POSTGRES_HOST=postgres
-      # --- VARIABLES MISES EN DUR ---
-      - POSTGRES_PASSWORD=FEfUg4pC66d6
-      - REDIS_PASSWORD=G44RTvqBxx57
-      - SECRET_KEY_BASE=4f36a5b927c1f8d0e7b2a6f5c8d4e1b0a9c8b7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4
-      # --- VARIABLES INTERNES ET STATIQUES ---
       - POSTGRES_DATABASE=chatwoot
       - POSTGRES_USER=chatwoot_prod
       - REDIS_URL=redis://redis:6379/1
       - NODE_ENV=production
       - INSTALLATION_ENV=docker
+
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     restart: always
-    # ✅ CORRECTION DU RÉSEAU: Retour au réseau 'default'
     networks:
       - default
 
   postgres:
     image: pgvector/pgvector:pg16
     restart: always
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+
     environment:
       - POSTGRES_DB=chatwoot
       - POSTGRES_USER=chatwoot_prod
-      # --- VARIABLE MISE EN DUR ---
-      - POSTGRES_PASSWORD=FEfUg4pC66d6
-    # ✅ CORRECTION DU RÉSEAU: Retour au réseau 'default'
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
     networks:
       - default
 
   redis:
     image: redis:alpine
     restart: always
-    # --- MISE À JOUR DE LA COMMANDE POUR LE MOT DE PASSE EN DUR ---
-    command: ["sh", "-c", "redis-server --requirepass \"FEfUg4pC66d6\""]
+
+    # CORRIGÉ : Redis utilise maintenant REDIS_PASSWORD du .env
+    command: ["sh", "-c", "redis-server --requirepass \"${REDIS_PASSWORD}\""]
+
     volumes:
       - redis_data:/data
-    # ✅ CORRECTION DU RÉSEAU: Retour au réseau 'default'
+
     networks:
       - default
-    
 
 volumes:
   storage_data:
   postgres_data:
   redis_data:
 
-# Définition des réseaux
 networks:
-  # ✅ REVERT: Retour à la définition du réseau interne sous 'default'
   default:
     name: chatwoot_default
-  # L'ancien réseau externe Traefik
+
   dokploy-network:
     external: true
